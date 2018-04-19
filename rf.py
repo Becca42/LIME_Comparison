@@ -6,15 +6,13 @@ rebecca adara
 
 NOTES & TODO for report:
 
- - split DS into train/test/val (will want cross-val for svm with this small of DS - TODO find citation for why)
- - SVM good for smaller DS (TODO find citation for why)
- - TODO explain why chose linear kernel and why chose C = 1.0 in fitClassifier
- - Accuracy: 0.946902654867
+ - why random forests?
+ - using default for maxdepth, etc.
 
 """
 
 import numpy as np
-from sklearn import svm
+from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier
 import lime
 import lime.lime_tabular
 import matplotlib
@@ -53,7 +51,6 @@ def loadData():
 
 	return X, y, Xtest, ytest
 
-
 def fitClassifier(X, y):
 	"""
 		fits classifier to data and lables
@@ -63,7 +60,7 @@ def fitClassifier(X, y):
 		Returns:
 			fitted classifier
 	"""
-	clf = svm.SVC(kernel='linear', C = 1.0, probability=True)
+	clf = RandomForestClassifier()
 	clf.fit(X,y)
 	return clf
 
@@ -87,39 +84,6 @@ def checkAccuracy(Xtest, ytest, classifier):
 			correct += 1.
 	return correct/totalSamples
 
-
-def explain(X, Xtest, yTest, classifier):
-	"""
-		TODO explain features used to make predictions for all test points
-		TODO keep track of where the prediction is correct
-	"""
-
-	features = [] # TODO fill with predictions used for each test-point, it's predicted label, and its actual label
-	labelOrder = {'B': 0, 'M': 1}
-
-	explainer = lime.lime_tabular.LimeTabularExplainer(X, feature_names=names1[2:], class_names=["B", "M"]) # TODO B, M or M, B?? (seems to matter)
-	
-	# print(exp.available_labels())
-
-	for i in range(0, len(Xtest)-1):
-		x = Xtest[i]
-		actual = yTest[i]
-		prediction = classifier.predict([x])
-		exp = explainer.explain_instance(x, classifier.predict_proba, labels=[0, 1])
-		results = exp.as_list(label=labelOrder[prediction[0]])
-		# TODO store result, actual in features
-		features.append({"actual": actual, "prediction": prediction[0], "exp": results})
-
-	return features
-	# exp.as_pyplot_figure().show() # NOTE defaults to label=1
-	# X = np.linspace(-np.pi, np.pi, 256, endpoint=True)
-	# C,S = np.cos(X), np.sin(X)
-
-	# plt.plot(X,C)
-	# plt.plot(X,S)
-
-	# plt.show()
-
 def main():
 	X, y, Xtest, ytest = loadData()
 	classifier = fitClassifier(X, y)
@@ -128,8 +92,7 @@ def main():
 	accuracy = checkAccuracy(Xtest, ytest, classifier)
 	print("Accuracy: " + str(accuracy))
 	# TODO explain classifier
-	features = explain(X, Xtest, ytest, classifier)
-	print(features[0])
+	# explain(X, Xtest, classifier)
 
 if __name__ == "__main__":
     main()
