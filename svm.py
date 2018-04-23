@@ -120,6 +120,35 @@ def explain(X, Xtest, yTest, classifier):
 
 	# plt.show()
 
+
+def lookAtFeatures(features):
+	"""
+		TODO look at features used to make predictions, draw some conclusions
+		Parameters:
+			features - list of dictionaries - predictions and associated explanations
+		Returns:
+			TODO
+	"""
+	# collect features used to explain correct & incorrect predictions by label
+	correctByPrediction = {'M': [], 'B': []}
+	correctByPredictionByFeature = {'M': {}, 'B': {}}
+	incorrectByPrediction = {'M': [], 'B': []}
+	incorrectByPredictionByFeature = {'M': {}, 'B': {}}
+
+	for f in features:
+		label = f['actual']
+		if label == f['prediction']:
+			correctByPrediction[label].append(f['exp'])
+			for (feat, exp) in f['exp']:
+				expList = correctByPredictionByFeature[label].get(feat, [])
+				correctByPredictionByFeature[label] = expList.append(exp)
+		else:
+			incorrectByPrediction[f['actual']].append(f['exp'])
+			for (feat, exp) in f['exp']:
+				expList = incorrectByPredictionByFeature[label].get(feat, [])
+				incorrectByPredictionByFeature[label] = expList.append(exp)
+
+
 def main():
 	X, y, Xtest, ytest = loadData()
 	classifier = fitClassifier(X, y)
@@ -129,6 +158,7 @@ def main():
 	print("Accuracy: " + str(accuracy))
 	# TODO explain classifier
 	features = explain(X, Xtest, ytest, classifier)
+	# TODO do something with features; draw conclusions about features used to make predictions are the accuracy of those predictions
 	print(features[0])
 
 if __name__ == "__main__":
