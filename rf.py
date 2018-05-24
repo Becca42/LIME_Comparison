@@ -64,6 +64,48 @@ def fitClassifier(X, y):
 	clf.fit(X,y)
 	return clf
 
+def explain(X, Xtest, yTest, classifier):
+	"""
+		TODO explain features used to make predictions for all test points
+		TODO keep track of where the prediction is correct
+	"""
+
+	features = [] # TODO fill with predictions used for each test-point, it's predicted label, and its actual label
+	labelOrder = {'B': 0, 'M': 1}
+
+	explainer = lime.lime_tabular.LimeTabularExplainer(X, feature_names=names1[2:], class_names=["B", "M"]) # TODO B, M or M, B?? (seems to matter)
+	
+	# print(exp.available_labels())
+
+	for i in range(0, len(Xtest)-1):
+		x = Xtest[i]
+		actual = yTest[i]
+		prediction = classifier.predict([x])
+		exp = explainer.explain_instance(x, classifier.predict_proba, labels=[0, 1])
+		results = exp.as_list(label=labelOrder[prediction[0]])
+		# store result, actual in features
+		features.append({"actual": actual, "prediction": prediction[0], "exp": results})
+
+	print("")
+	print(x)
+	print("actuat: " + str(actual))
+	print("prediction" + str(prediction))
+	exp.as_pyplot_figure().show() # NOTE defaults to label=1
+	graph = exp.as_pyplot_figure()
+	print("graph")
+	print(graph)
+	graph.show()
+	#plot_features(exp, ncol = 1)
+
+	X = np.linspace(-np.pi, np.pi, 256, endpoint=True)
+	C,S = np.cos(X), np.sin(X)
+
+	plt.plot(X,C)
+	plt.plot(X,S)
+
+	plt.show()
+	return features
+
 def checkAccuracy(Xtest, ytest, classifier):
 	"""
 		returns accruacy of classifier on test set
@@ -82,7 +124,70 @@ def checkAccuracy(Xtest, ytest, classifier):
 		classification = classifier.predict([Xtest[i]])
 		if classification[0] == ytest[i]:
 			correct += 1.
+	print correct
+	print totalSamples
 	return correct/totalSamples
+
+
+def lookAtFeatures(features):
+	"""
+		TODO look at features used to make predictions, draw some conclusions
+		Parameters:
+			features - list of dictionaries - predictions and associated explanations
+		Returns:
+			TODO
+	"""
+	# collect features used to explain correct & incorrect predictions by label
+	correctByPrediction = {'M': [], 'B': []}
+	correctByPredictionByFeature = {'M': {}, 'B': {}}
+	incorrectByPrediction = {'M': [], 'B': []}
+	incorrectByPredictionByFeature = {'M': {}, 'B': {}}
+	featureUseCount = {} # aggregate confidences for all features for all predictions
+
+	for f in features:
+		# check if correct prediction was made
+		label = f['actual']
+		if label == f['prediction']:
+			correctByPrediction[label].append(f['exp'])
+			for (feat, confidence) in f['exp']:
+				confidenceList = correctByPredictionByFeature[label].get(feat, [])
+				confidenceList.append(confidence)
+				correctByPredictionByFeature[label][feat] = confidenceList
+				# add to totally feature counts
+				confidenceListAll = featureUseCount.get(feat, [])
+				confidenceListAll.append(confidence)
+				featureUseCount[feat] = confidenceListAll
+		else:
+			incorrectByPrediction[f['actual']].append(f['exp'])
+			for (feat, confidence) in f['exp']:
+				confidenceList = incorrectByPredictionByFeature[label].get(feat, [])
+				confidenceList.append(confidence)
+				incorrectByPredictionByFeature[label][feat] = confidenceList
+				# add to totall feature counts
+				confidenceListAll = featureUseCount.get(feat, [])
+				confidenceListAll.append(confidence)
+				featureUseCount[feat] = confidenceListAll
+	useCounts = {}
+	for k in featureUseCount.keys():
+		useCounts[k] = len(featureUseCount[k])
+
+	#print('useCounts')
+	#print(useCounts)
+
+	# get most common features used across all predictions (correct and incorrect)
+	sortedByMostUsed = sorted(featureUseCount, key=lambda k: len(featureUseCount[k]), reverse=True)
+	#print("sortedByMostUsed")
+	#print(sortedByMostUsed)
+	# TODO get most common features used for each class (M/B) (correct and incorrect)
+	# get features sorted by avg importance (weight of explainer)
+	#sortedByAvgImportance = sorted(featureUseCount, key=lambda k: sum(featureUseCount[k])/len(featureUseCount[k]), reverse=True)
+	#print(sortedByAvgImportance)
+
+	#print('Average Importance')
+	avgimportance = {}
+	for k in featureUseCount.keys():
+		avgimportance[k] = sum(featureUseCount[k])/len(featureUseCount[k])
+	#print(avgimportance)
 
 def main():
 	X, y, Xtest, ytest = loadData()
@@ -92,7 +197,8 @@ def main():
 	accuracy = checkAccuracy(Xtest, ytest, classifier)
 	print("Accuracy: " + str(accuracy))
 	# TODO explain classifier
-	# explain(X, Xtest, classifier)
+	features = explain(X, Xtest, ytest, classifier)
+	lookAtFeatures(features)
 
 if __name__ == "__main__":
     main()
